@@ -13,7 +13,7 @@ list_users() {
     menu_items+=("$user" "$user")
   done
 
-  dialog --backtitle "ExOS User Management" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}"
+  dialog --backtitle "ExOS User Management" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}" || echo "CANCEL"
 }
 
 list_human_users() {
@@ -23,117 +23,88 @@ list_human_users() {
     menu_items+=("$user" "$user")
   done
 
-  dialog --backtitle "ExOS User Management" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}"
+  dialog --backtitle "ExOS User Management" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}" || echo "CANCEL"
 }
 
 view_user_stats() {
   local user=$1
-  if id "$user" &>/dev/null; then
-    sudo_status=$(groups "$user" | grep -qwE 'sudo|wheel' && echo "Yes" || echo "No")
-    groups=$(id -nG "$user")
-    last_login=$(lastlog -u "$user" | awk 'NR==2 {print $4, $5, $6, $7}')
-    ssh_sources=$(last -i "$user" | awk '{print $3}' | grep -v '^$' | sort -u)
-    
-    ssh_info=""
-    for ip in $ssh_sources; do
-      whois_output=$(whois "$ip" | grep -m 1 "OrgName\|country")
-      ssh_info+="$ip - $whois_output\n"
-    done
+  sudo_status=$(groups "$user" | grep -qwE 'sudo|wheel' && echo "Yes" || echo "No")
+  groups=$(id -nG "$user")
+  last_login=$(lastlog -u "$user" | awk 'NR==2 {print $4, $5, $6, $7}')
+  ssh_sources=$(last -i "$user" | awk '{print $3}' | grep -v '^$' | sort -u)
 
-    dialog --msgbox "User: $user\nSudo: $sudo_status\nGroups: $groups\nLast Login: ${last_login:-Never}\nSSH Sources:\n${ssh_info:-None}" 20 70
-  else
-    dialog --msgbox "Error: User '$user' does not exist." 10 50
-  fi
+  ssh_info=""
+  for ip in $ssh_sources; do
+    whois_output=$(whois "$ip" | grep -m 1 "OrgName\|country")
+    ssh_info+="$ip - $whois_output\n"
+  done
+
+  dialog --msgbox "User: $user\nSudo: $sudo_status\nGroups: $groups\nLast Login: ${last_login:-Never}\nSSH Sources:\n${ssh_info:-None}" 20 70
 }
 
 toggle_sudo() {
   local user=$1
-  if id "$user" &>/dev/null; then
-    if groups "$user" | grep -qw sudo; then
-      sudo deluser "$user" sudo
-      log_action "Removed sudo privileges from $user."
-      dialog --msgbox "Removed sudo privileges from $user." 10 40
-    else
-      sudo adduser "$user" sudo
-      log_action "Granted sudo privileges to $user."
-      dialog --msgbox "Granted sudo privileges to $user." 10 40
-    fi
+  if groups "$user" | grep -qw sudo; then
+    sudo deluser "$user" sudo
+    log_action "Removed sudo privileges from $user."
+    dialog --msgbox "Removed sudo privileges from $user." 10 40
   else
-    dialog --msgbox "User $user does not exist." 10 40
+    sudo adduser "$user" sudo
+    log_action "Granted sudo privileges to $user."
+    dialog --msgbox "Granted sudo privileges to $user." 10 40
   fi
 }
 
 remove_user() {
   local user=$1
-  if id "$user" &>/dev/null; then
-    dialog --yesno "Are you sure you want to remove $user?" 10 40
-    if [[ $? -eq 0 ]]; then
-      dialog --yesno "Do you want to delete the home directory for $user?" 10 40
-      local delete_home=$?
-      if [[ $delete_home -eq 0 ]]; then
-        sudo userdel -r "$user"
-        log_action "User $user and home directory deleted."
-      else
-        sudo userdel "$user"
-        log_action "User $user deleted but home directory kept."
-      fi
-      dialog --msgbox "User $user has been removed." 10 40
+  dialog --yesno "Are you sure you want to remove $user?" 10 40
+  if [[ $? -eq 0 ]]; then
+    dialog --yesno "Do you want to delete the home directory for $user?" 10 40
+    local delete_home=$?
+    if [[ $delete_home -eq 0 ]]; then
+      sudo userdel -r "$user"
+      log_action "User $user and home directory deleted."
+    else
+      sudo userdel "$user"
+      log_action "User $user deleted but home directory kept."
     fi
-  else
-    dialog --msgbox "User $user does not exist." 10 40
+    dialog --msgbox "User $user has been removed." 10 40
   fi
 }
 
 add_user() {
   while true; do
     new_user=$(dialog --backtitle "ExOS User Management" --stdout --inputbox "Enter the new username:" 10 40)
-    if [[ $? -ne 0 ]]; then
-      break
-    fi
-    if [[ -n $new_user ]]; then
-      if sudo useradd -m "$new_user" && sudo passwd "$new_user"; then
-        log_action "User $new_user added."
-        dialog --msgbox "User $new_user has been added." 10 40
-      else
-        dialog --msgbox "Failed to add user $new_user. Please check your input." 10 40
-      fi
+    [[ $? -ne 0 ]] && break
+    [[ -z $new_user ]] && continue
+    if sudo useradd -m "$new_user" && sudo passwd "$new_user"; then
+      log_action "User $new_user added."
+      dialog --msgbox "User $new_user has been added." 10 40
     else
-      dialog --msgbox "No username provided. Returning to the Add User menu." 10 40
+      dialog --msgbox "Failed to add user $new_user." 10 40
     fi
   done
 }
 
 change_password() {
   local user=$1
-  if id "$user" &>/dev/null; then
-    sudo passwd "$user"
-    log_action "Password changed for user $user."
-    dialog --msgbox "Password changed for $user." 10 40
-  else
-    dialog --msgbox "User $user does not exist." 10 40
-  fi
+  sudo passwd "$user"
+  log_action "Password changed for user $user."
+  dialog --msgbox "Password changed for $user." 10 40
 }
 
 lock_user() {
   local user=$1
-  if id "$user" &>/dev/null; then
-    sudo usermod -s /sbin/nologin "$user"
-    log_action "Locked user $user."
-    dialog --msgbox "User $user has been locked." 10 40
-  else
-    dialog --msgbox "User $user does not exist." 10 40
-  fi
+  sudo usermod -s /sbin/nologin "$user"
+  log_action "Locked user $user."
+  dialog --msgbox "User $user has been locked." 10 40
 }
 
 unlock_user() {
   local user=$1
-  if id "$user" &>/dev/null; then
-    sudo usermod -s /bin/bash "$user"
-    log_action "Unlocked user $user."
-    dialog --msgbox "User $user has been unlocked." 10 40
-  else
-    dialog --msgbox "User $user does not exist." 10 40
-  fi
+  sudo usermod -s /bin/bash "$user"
+  log_action "Unlocked user $user."
+  dialog --msgbox "User $user has been unlocked." 10 40
 }
 
 list_locked_users() {
@@ -153,8 +124,8 @@ while true; do
     1|2)
       while true; do
         user=$([[ $action -eq 1 ]] && list_users || list_human_users)
-        if [[ -z $user ]]; then break; fi
-        
+        [[ "$user" == "CANCEL" ]] && break
+
         choice=$(dialog --backtitle "ExOS User Management" --stdout --menu "Manage $user" 20 50 10 \
           1 "View Stats" \
           2 "Toggle Sudo Privileges" \
