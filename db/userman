@@ -1,9 +1,9 @@
 #!/bin/bash
 
-LOGFILE="/root/actions.txt"
+LOG_FILE="/root/actions.txt"
 
 log_action() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOGFILE"
+  echo "$(date): $1" >> "$LOG_FILE"
 }
 
 list_users() {
@@ -13,8 +13,7 @@ list_users() {
     menu_items+=("$user" "$user")
   done
 
-  selected_user=$(dialog --backtitle "ExOS User Manager" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}")
-  echo "$selected_user"
+  dialog --backtitle "ExOS User Management" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}"
 }
 
 list_human_users() {
@@ -24,26 +23,24 @@ list_human_users() {
     menu_items+=("$user" "$user")
   done
 
-  selected_user=$(dialog --backtitle "ExOS User Manager" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}")
-  echo "$selected_user"
+  dialog --backtitle "ExOS User Management" --stdout --menu "Select a user" 20 50 15 "${menu_items[@]}"
 }
 
 view_user_stats() {
   local user=$1
   if id "$user" &>/dev/null; then
-    last_login=$(lastlog -u "$user" | awk 'NR==2 {print $4, $5, $6, $7}')
-    ssh_source=$(last -i "$user" | awk 'NR==1 {print $3}')
-    whois_info=$(whois "$ssh_source" 2>/dev/null | grep -E 'OrgName|Country' | head -n 5)
-
-    if groups "$user" | grep -qwE 'sudo|wheel'; then
-      sudo_status="Yes"
-    else
-      sudo_status="No"
-    fi
-
+    sudo_status=$(groups "$user" | grep -qwE 'sudo|wheel' && echo "Yes" || echo "No")
     groups=$(id -nG "$user")
+    last_login=$(lastlog -u "$user" | awk 'NR==2 {print $4, $5, $6, $7}')
+    ssh_sources=$(last -i "$user" | awk '{print $3}' | grep -v '^$' | sort -u)
+    
+    ssh_info=""
+    for ip in $ssh_sources; do
+      whois_output=$(whois "$ip" | grep -m 1 "OrgName\|country")
+      ssh_info+="$ip - $whois_output\n"
+    done
 
-    dialog --msgbox "User: $user\nSudo: $sudo_status\nGroups: $groups\nLast Login: ${last_login:-Unknown}\nSSH Source: ${ssh_source:-None}\nWhois Info:\n$whois_info" 20 70
+    dialog --msgbox "User: $user\nSudo: $sudo_status\nGroups: $groups\nLast Login: ${last_login:-Never}\nSSH Sources:\n${ssh_info:-None}" 20 70
   else
     dialog --msgbox "Error: User '$user' does not exist." 10 50
   fi
@@ -54,54 +51,16 @@ toggle_sudo() {
   if id "$user" &>/dev/null; then
     if groups "$user" | grep -qw sudo; then
       sudo deluser "$user" sudo
-      log_action "Removed sudo privileges from $user"
+      log_action "Removed sudo privileges from $user."
       dialog --msgbox "Removed sudo privileges from $user." 10 40
     else
       sudo adduser "$user" sudo
-      log_action "Granted sudo privileges to $user"
+      log_action "Granted sudo privileges to $user."
       dialog --msgbox "Granted sudo privileges to $user." 10 40
     fi
   else
     dialog --msgbox "User $user does not exist." 10 40
   fi
-}
-
-change_password() {
-  local user=$1
-  if id "$user" &>/dev/null; then
-    sudo passwd "$user"
-    log_action "Password changed for $user"
-    dialog --msgbox "Password changed for $user." 10 40
-  else
-    dialog --msgbox "User $user does not exist." 10 40
-  fi
-}
-
-lock_user() {
-  local user=$1
-  if id "$user" &>/dev/null; then
-    sudo usermod -s /sbin/nologin "$user"
-    log_action "Locked user $user"
-    dialog --msgbox "User $user has been locked." 10 40
-  else
-    dialog --msgbox "User $user does not exist." 10 40
-  fi
-}
-
-unlock_user() {
-  local user=$1
-  if id "$user" &>/dev/null; then
-    sudo usermod -s /bin/bash "$user"
-    log_action "Unlocked user $user"
-    dialog --msgbox "User $user has been unlocked." 10 40
-  else
-    dialog --msgbox "User $user does not exist." 10 40
-  fi
-}
-
-list_locked_users() {
-  locked_users=$(awk -F: '$7 == "/sbin/nologin" {print $1}' /etc/passwd)
-  dialog --msgbox "Locked Users:\n${locked_users:-None}" 15 50
 }
 
 remove_user() {
@@ -113,10 +72,10 @@ remove_user() {
       local delete_home=$?
       if [[ $delete_home -eq 0 ]]; then
         sudo userdel -r "$user"
-        log_action "Removed user $user and deleted home directory"
+        log_action "User $user and home directory deleted."
       else
         sudo userdel "$user"
-        log_action "Removed user $user without deleting home directory"
+        log_action "User $user deleted but home directory kept."
       fi
       dialog --msgbox "User $user has been removed." 10 40
     fi
@@ -127,13 +86,13 @@ remove_user() {
 
 add_user() {
   while true; do
-    new_user=$(dialog --backtitle "ExOS User Manager" --stdout --inputbox "Enter the new username:" 10 40)
+    new_user=$(dialog --backtitle "ExOS User Management" --stdout --inputbox "Enter the new username:" 10 40)
     if [[ $? -ne 0 ]]; then
       break
     fi
     if [[ -n $new_user ]]; then
       if sudo useradd -m "$new_user" && sudo passwd "$new_user"; then
-        log_action "Added user $new_user"
+        log_action "User $new_user added."
         dialog --msgbox "User $new_user has been added." 10 40
       else
         dialog --msgbox "Failed to add user $new_user. Please check your input." 10 40
@@ -144,48 +103,78 @@ add_user() {
   done
 }
 
+change_password() {
+  local user=$1
+  if id "$user" &>/dev/null; then
+    sudo passwd "$user"
+    log_action "Password changed for user $user."
+    dialog --msgbox "Password changed for $user." 10 40
+  else
+    dialog --msgbox "User $user does not exist." 10 40
+  fi
+}
+
+lock_user() {
+  local user=$1
+  if id "$user" &>/dev/null; then
+    sudo usermod -s /sbin/nologin "$user"
+    log_action "Locked user $user."
+    dialog --msgbox "User $user has been locked." 10 40
+  else
+    dialog --msgbox "User $user does not exist." 10 40
+  fi
+}
+
+unlock_user() {
+  local user=$1
+  if id "$user" &>/dev/null; then
+    sudo usermod -s /bin/bash "$user"
+    log_action "Unlocked user $user."
+    dialog --msgbox "User $user has been unlocked." 10 40
+  else
+    dialog --msgbox "User $user does not exist." 10 40
+  fi
+}
+
+list_locked_users() {
+  locked_users=$(awk -F: '$7 == "/sbin/nologin" {print $1}' /etc/passwd)
+  dialog --msgbox "Locked Users:\n${locked_users:-None}" 15 50
+}
+
 while true; do
-  action=$(dialog --backtitle "ExOS User Manager" --stdout --menu "User Management" 20 50 10 \
+  action=$(dialog --backtitle "ExOS User Management" --stdout --menu "User Management" 20 50 10 \
     1 "List All Users" \
     2 "List Human Users" \
-    3 "View All Users in /etc/passwd" \
-    4 "Add User" \
-    5 "Change User Password" \
-    6 "Lock User" \
-    7 "Unlock User" \
-    8 "List Locked Users" \
-    9 "Exit")
+    3 "Add User" \
+    4 "List Locked Users" \
+    5 "Exit")
 
   case $action in
-    1)
+    1|2)
       while true; do
-        user=$(list_users)
-        if [[ -z $user ]]; then
-          break
-        fi
-        choice=$(dialog --backtitle "ExOS User Manager" --stdout --menu "Manage $user" 20 50 10 \
+        user=$([[ $action -eq 1 ]] && list_users || list_human_users)
+        if [[ -z $user ]]; then break; fi
+        
+        choice=$(dialog --backtitle "ExOS User Management" --stdout --menu "Manage $user" 20 50 10 \
           1 "View Stats" \
           2 "Toggle Sudo Privileges" \
-          3 "Remove User")
+          3 "Remove User" \
+          4 "Change Password" \
+          5 "Lock User" \
+          6 "Unlock User")
 
         case $choice in
           1) view_user_stats "$user" ;;
           2) toggle_sudo "$user" ;;
           3) remove_user "$user" ;;
+          4) change_password "$user" ;;
+          5) lock_user "$user" ;;
+          6) unlock_user "$user" ;;
         esac
       done
       ;;
-    2)
-      list_human_users
-      ;;
-    3)
-      dialog --msgbox "$(cat /etc/passwd)" 25 100
-      ;;
-    4) add_user ;;
-    5) user=$(list_human_users); [[ -n $user ]] && change_password "$user" ;;
-    6) user=$(list_human_users); [[ -n $user ]] && lock_user "$user" ;;
-    7) user=$(list_human_users); [[ -n $user ]] && unlock_user "$user" ;;
-    8) list_locked_users ;;
-    9) break ;;
+    3) add_user ;;
+    4) list_locked_users ;;
+    5) break ;;
   esac
 done
