@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SNO-isleTEAM2</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 3%;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .background-container {
+      background: url('Creation/1483451.jpg') center/cover no-repeat;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+    }
+
+    .container {
+      position: relative;
+      background: black;
+      width: 90%;
+      border-radius: 25px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      color: white;
+      font-family: serif;
+      text-align: center;
+      padding: 1%;
+    }
+
+    .container::before {
+      content: "";
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
+      border-radius: 25px;
+      background: linear-gradient(90deg, #3e3e3e, #e0e0e0 50%, #3e3e3e);
+      z-index: -1;
+    }
+
+    .text-image-container {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    .text-content {
+      font-size: 1.2rem;
+      margin: 5px;
+      flex: 1;
+    }
+
+    .image-content {
+      width: 100px;
+      position: absolute;
+      right: 0;
+    }
+
+    @media (max-width: 530px) {
+      .text-content {
+        text-align: left;
+      }
+      .image-content {
+        position: relative;
+        margin-left: 10px;
+        transform: none;
+      }
+    }
+
+    @media (max-width: 1300px) {
+      .image-content {
+        display: none;
+      }
+      .text-image-container {
+        justify-content: center;
+      }
+      .text-content {
+        text-align: center;
+        max-width: 100%;
+      }
+    }
+
+    .solid-line {
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(to right, rgba(62, 62, 62, 0), #3e3e3e, #e0e0e0, #3e3e3e, rgba(62, 62, 62, 0));
+      margin: 20px 0;
+    }
+
+    .vertical-line {
+      width: 2px;
+      height: auto;
+      background: linear-gradient(to bottom, rgba(62, 62, 62, 0), #3e3e3e, #e0e0e0, #3e3e3e, rgba(62, 62, 62, 0));
+    }
+
+    .vertical-line-container {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      height: auto;
+      padding: 0.5% 0;
+    }
+
+    .left-text, .right-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      width: 45%;
+      padding: 0 20px;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+
+    ::selection {
+      background-color: white;
+      color: black;
+    }
+
+    ::-moz-selection {
+      background-color: white;
+      color: black;
+    }
+  </style>
+</head>
+<body>
+
+
+
+
+  <div class="background-container"></div>
+  <div class="container">
+    <div class="text-image-container">
+      <div class="text-content">
+            <img src="LakeLogo.png" class="image-content">
+
+    <h2>ExOS, a Custom Linux Distro, Tailor Made For You.</h2>
+      </div>
+    </div>
+
+
+
+
+
+    <div class="solid-line"></div>
+    <h3>Welcome to the official ExOS, or Extended OS, listed below are a couple of customized Linux Distro's, You can expect your final product to look better then this.</h3>
+
+      <!-- Below is left column text -->
+
+    <div class="vertical-line-container">
+
+
+
+
+
+      <div class="left-text">
+<!-- left text begin -->
+
+<p>A fully custom Linux Distro takes time to get it right, if you aren't 100% satisfied I will take that time to make it right.</p>
+<p>I can pre-install software that you might use like OBS, Steam, Office Suites, and more.</p>
+<p>Compiled programs cost an extra 2$ due to time.s</p>
+<p>Along those lines I can also theme your Linux Distro to your liking.</p>
+<p>I can also install differing Linux Kernels like Linux LTS or a Hardened Linux Kernel for an extra 5$ unless your custom Linux Distro is Arch Based, then its free.</p>
+<p>The cost of 1 DVD containing the custom Distro is 15$ with each additional being 5$</p>
+
+<!-- left text end -->
+
+      </div>
+
+
+      <!-- Vertical line -->
+      <div class="vertical-line"></div>
+      <!-- Vertical line -->
+
+      <div class="right-text">
+      <!-- right text begin -->
+
+<p>A couple screenshots of what you can expect:</p>
+<p></p>
+<a href="Creation/Arch.png">
+<img src="Creation/Arch.png" style="max-width: 100%; height: auto;">
+</a>
+<p></p>
+<a href="Creation/Ubuntu.png">
+<img src="Creation/Ubuntu.png" style="max-width: 100%; height: auto;">
+</a>
+<p></p>
+<a href="Creation/Debian.png">
+<img src="Creation/Debian.png" style="max-width: 100%; height: auto;">
+</a>
+<p></p>
+
+      <!-- right text end -->
+
+      </div>
+    </div>
+
+    <div class="solid-line"></div>
+    <h3>ExOS, the Extended OS, Linux how you want it, customized and compiled for you.</h3>
+  </div>
+</body>
+</html>
